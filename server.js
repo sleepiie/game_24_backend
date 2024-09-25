@@ -74,6 +74,21 @@ function getPermutations(arr) {
   return result;
 }
 
+function startCountdown(roomId, duration) {
+  let timeLeft = duration;
+  const countdown = setInterval(() => {
+    timeLeft -= 1;
+
+    if (timeLeft <= 0) {
+        clearInterval(countdown);
+        io.to(roomId).emit('gameEnded');
+    }
+    else {
+        io.to(roomId).emit('updateTimeLeft', timeLeft);
+    }
+  }, 1000);
+}
+
 // เก็บข้อมูลห้อง
 const roomdata = {};
 
@@ -86,6 +101,7 @@ io.on("connection", (socket) => {
       NumberSets: generate15Sets24GameNumbers(),
       players: {},
       isPlaying: false,
+      timeLimit: 60,
     };
     socket.emit("roomCreated", sessionId);
   });
@@ -157,6 +173,9 @@ io.on("connection", (socket) => {
     if (roomdata[roomId]) {
       roomdata[roomId].isPlaying = true;
       io.to(roomId).emit('gameStarted');
+
+      const timeLimit = roomdata[roomId].timeLimit;
+      startCountdown(roomId, timeLimit);
     }
   });
 
