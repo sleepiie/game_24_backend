@@ -156,13 +156,22 @@ io.on("connection", (socket) => {
     const { roomId, playerName } = data;
     if (roomdata[roomId] && roomdata[roomId].players[playerName]) {
       const playerData = roomdata[roomId].players[playerName];
+      const currentSetIndex = playerData.currentSetIndex;
+
+      const timeLeft = roomdata[roomId].timeLimit;
+      const scoreAdd = Math.floor((currentSetIndex * timeLeft) / 2);
+      playerData.score += scoreAdd;
+
       playerData.currentSetIndex++;
       if (playerData.currentSetIndex > 15) {
         playerData.currentSetIndex = 1;
       }
+      io.to(roomId).emit('updatescorePlayers', roomdata[roomId].players);
+
       socket.emit('updateCurrentSet', {
         currentNumbers: roomdata[roomId].NumberSets[`number${playerData.currentSetIndex}`],
-        currentSetIndex: playerData.currentSetIndex
+        currentSetIndex: playerData.currentSetIndex,
+        score: playerData.score,
       });
     }
     console.log(roomdata[roomId].players);
