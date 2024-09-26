@@ -13,7 +13,7 @@ const io = new Server(server, {
 // ฟังก์ชันสำหรับสร้างชุดตัวเลขสำหรับเกม 24 ชุด
 function generate15Sets24GameNumbers() {
   const numberSets = {};
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 2; i++) {
     numberSets[`number${i}`] = generateRandom24GameNumbers();
   }
   return numberSets;
@@ -75,16 +75,17 @@ function getPermutations(arr) {
 }
 
 function startCountdown(roomId, duration) {
-  let timeLeft = duration;
-  const countdown = setInterval(() => {
-    timeLeft -= 1;
 
-    if (timeLeft <= 0) {
+  roomdata[roomId].timeLeft = duration;
+  const countdown = setInterval(() => {
+    roomdata[roomId].timeLeft -= 1;
+
+    if (roomdata[roomId].timeLeft <= 0) {
         clearInterval(countdown);
         io.to(roomId).emit('gameEnded');
     }
     else {
-        io.to(roomId).emit('updateTimeLeft', timeLeft);
+        io.to(roomId).emit('updateTimeLeft', roomdata[roomId].timeLeft);
     }
   }, 1000);
 }
@@ -101,7 +102,7 @@ io.on("connection", (socket) => {
       NumberSets: generate15Sets24GameNumbers(),
       players: {},
       isPlaying: false,
-      timeLimit: 60,
+      timeLimit: 300,
     };
     socket.emit("roomCreated", sessionId);
   });
@@ -121,20 +122,24 @@ io.on("connection", (socket) => {
         socket.emit("joinRoomError", "The game has already started.");
         console.log("The game has already started.");
       }
-      else{
-        socket.join(data.roomId);
-        roomdata[data.roomId].players[data.playerName] = {
-            score: 0,
-            currentSetIndex: 1,
-        };
-        io.to(data.roomId).emit('updatePlayers', roomdata[data.roomId].players);
-
-        socket.emit('updateCurrentSet', {
-            currentNumbers: roomdata[data.roomId].NumberSets[`number1`],
-            currentSetIndex: 1 
-        });
-        console.log(roomdata[data.roomId].players);
+      else if (roomdata[data.roomId].players[data.playerName]) {
+        socket.emit("joinRoomError", "The player name is already taken.");
+        console.log("The player name is already taken.");
       }
+      else{
+            socket.join(data.roomId);
+            roomdata[data.roomId].players[data.playerName] = {
+                score: 0,
+                currentSetIndex: 1,
+            };
+            io.to(data.roomId).emit('updatePlayers', roomdata[data.roomId].players);
+
+            socket.emit('updateCurrentSet', {
+                currentNumbers: roomdata[data.roomId].NumberSets[`number1`],
+                currentSetIndex: 1 
+            });
+            console.log(roomdata[data.roomId].players);
+        }
     }
   });
 
@@ -158,13 +163,13 @@ io.on("connection", (socket) => {
       const playerData = roomdata[roomId].players[playerName];
       const currentSetIndex = playerData.currentSetIndex;
 
-      const timeLeft = roomdata[roomId].timeLimit;
-      const scoreAdd = Math.floor((currentSetIndex * timeLeft) / 2);
+      const timeLeft = roomdata[roomId].timeLeft;
+      const scoreAdd = Math.floor((currentSetIndex * timeLeft)/2);
       playerData.score += scoreAdd;
 
       playerData.currentSetIndex++;
-      if (playerData.currentSetIndex > 15) {
-        playerData.currentSetIndex = 1;
+      if (playerData.currentSetIndex > 2) {
+        socket.emit('finished', {playerName : playerName});
       }
       io.to(roomId).emit('updatescorePlayers', roomdata[roomId].players);
 
