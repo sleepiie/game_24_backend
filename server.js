@@ -75,17 +75,16 @@ function getPermutations(arr) {
 }
 
 function startCountdown(roomId, duration) {
-
   roomdata[roomId].timeLeft = duration;
-  const countdown = setInterval(() => {
+  roomdata[roomId].countdownInterval = setInterval(() => {
     roomdata[roomId].timeLeft -= 1;
 
     if (roomdata[roomId].timeLeft <= 0) {
-        clearInterval(countdown);
-        io.to(roomId).emit('gameEnded');
+      clearInterval(roomdata[roomId].countdownInterval);
+      io.to(roomId).emit('gameEnded');
     }
     else {
-        io.to(roomId).emit('updateTimeLeft', roomdata[roomId].timeLeft);
+      io.to(roomId).emit('updateTimeLeft', roomdata[roomId].timeLeft);
     }
   }, 1000);
 }
@@ -97,12 +96,14 @@ io.on("connection", (socket) => {
   console.log("A user connected");
 
   socket.on("createRoom", () => {
-    const sessionId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const sessionId = Math.floor(100000 + Math.random() * 900000);
     roomdata[sessionId] = {
       NumberSets: generate15Sets24GameNumbers(),
       players: {},
       isPlaying: false,
-      timeLimit: 300,
+      playerinroom: 0,
+      playerfininsed: 0,
+      timeLimit: 60,
     };
     socket.emit("roomCreated", sessionId);
   });
@@ -128,6 +129,7 @@ io.on("connection", (socket) => {
       }
       else{
             socket.join(data.roomId);
+            roomdata[data.roomId].playerinroom += 1;
             roomdata[data.roomId].players[data.playerName] = {
                 score: 0,
                 currentSetIndex: 1,
@@ -142,6 +144,7 @@ io.on("connection", (socket) => {
         }
     }
   });
+
 
   socket.on('joinGame', (data) => {
     const roomId = data.roomId;
@@ -170,6 +173,10 @@ io.on("connection", (socket) => {
       playerData.currentSetIndex++;
       if (playerData.currentSetIndex > 2) {
         socket.emit('finished', {playerName : playerName});
+        roomdata[roomId].playerfininsed += 1;
+        if (roomdata[roomId].playerfininsed === roomdata[roomId].playerinroom) {
+          io.to(roomId).emit('gameEnded'); // ส่งอีเวนต์ gameEnded
+        }
       }
       io.to(roomId).emit('updatescorePlayers', roomdata[roomId].players);
 
@@ -179,8 +186,9 @@ io.on("connection", (socket) => {
         score: playerData.score,
       });
     }
-    console.log(roomdata[roomId].players);
+    console.log(roomdata[roomId]);
   });
+
 
   socket.on('startGame', (data) => {
     const { roomId } = data;
@@ -193,6 +201,27 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on('leaveRoom', (data) => {
+    const { roomId, playerName } = data;
+    if (roomdata[roomId] && roomdata[roomId].players[playerName]) {
+      delete roomdata[roomId].players[playerName];
+      roomdata[roomId].playerinroom--;
+      // อัปเดตรายชื่อผู้เล่นในห้องให้ผู้เล่นคนอื่นๆ ทราบ
+      io.to(roomId).emit('updatePlayers', roomdata[roomId].players);
+    }
+  });
+
+  socket.on('endRoom', (data) => {
+    const { roomId } = data;
+    if (roomdata[roomId]) {
+      if (roomdata[roomId].countdownInterval) {
+        clearInterval(roomdata[roomId].countdownInterval);
+      }
+      delete roomdata[roomId];
+      io.to(roomId).emit('roomEnded');
+    }
+    console.log(roomdata);
+  });
 
 });
 
