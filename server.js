@@ -13,7 +13,7 @@ const io = new Server(server, {
 // ฟังก์ชันสำหรับสร้างชุดตัวเลขสำหรับเกม 24 ชุด
 function generate15Sets24GameNumbers() {
   const numberSets = {};
-  for (let i = 1; i <= 2; i++) {
+  for (let i = 1; i <= 15; i++) {
     numberSets[`number${i}`] = generateRandom24GameNumbers();
   }
   return numberSets;
@@ -103,9 +103,10 @@ io.on("connection", (socket) => {
       isPlaying: false,
       playerinroom: 0,
       playerfininsed: 0,
-      timeLimit: 60,
+      timeLimit: 600,
     };
     socket.emit("roomCreated", sessionId);
+    console.log(roomdata[sessionId].NumberSets);
   });
 
   socket.on('hostRoom', (data) => {
@@ -171,7 +172,7 @@ io.on("connection", (socket) => {
       playerData.score += scoreAdd;
 
       playerData.currentSetIndex++;
-      if (playerData.currentSetIndex > 2) {
+      if (playerData.currentSetIndex > 15) {
         socket.emit('finished', {playerName : playerName});
         roomdata[roomId].playerfininsed += 1;
         if (roomdata[roomId].playerfininsed === roomdata[roomId].playerinroom) {
@@ -206,8 +207,15 @@ io.on("connection", (socket) => {
     if (roomdata[roomId] && roomdata[roomId].players[playerName]) {
       delete roomdata[roomId].players[playerName];
       roomdata[roomId].playerinroom--;
+      
+      // ส่ง event เฉพาะเจาะจงสำหรับผู้เล่นที่ออกจากห้อง
+      socket.emit('leftRoom');
+      
       // อัปเดตรายชื่อผู้เล่นในห้องให้ผู้เล่นคนอื่นๆ ทราบ
-      io.to(roomId).emit('updatePlayers', roomdata[roomId].players);
+      socket.to(roomId).emit('updatePlayers', roomdata[roomId].players);
+      
+      // ให้ผู้เล่นออกจากห้อง socket
+      socket.leave(roomId);
     }
   });
 
