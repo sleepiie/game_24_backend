@@ -93,7 +93,6 @@ function startCountdown(roomId, duration) {
 const roomdata = {};
 
 io.on("connection", (socket) => {
-  console.log("A user connected");
 
   socket.on("createRoom", () => {
     const sessionId = Math.floor(100000 + Math.random() * 900000);
@@ -106,7 +105,6 @@ io.on("connection", (socket) => {
       timeLimit: 600,
     };
     socket.emit("roomCreated", sessionId);
-    console.log(roomdata[sessionId].NumberSets);
   });
 
   socket.on('hostRoom', (data) => {
@@ -141,7 +139,6 @@ io.on("connection", (socket) => {
                 currentNumbers: roomdata[data.roomId].NumberSets[`number1`],
                 currentSetIndex: 1 
             });
-            console.log(roomdata[data.roomId].players);
         }
     }
   });
@@ -187,7 +184,6 @@ io.on("connection", (socket) => {
         score: playerData.score,
       });
     }
-    console.log(roomdata[roomId]);
   });
 
 
@@ -228,7 +224,6 @@ io.on("connection", (socket) => {
       delete roomdata[roomId];
       io.to(roomId).emit('roomEnded');
     }
-    console.log(roomdata);
   });
 
 });
