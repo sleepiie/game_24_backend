@@ -13,7 +13,7 @@ const io = new Server(server, {
 // ฟังก์ชันสำหรับสร้างชุดตัวเลขสำหรับเกม 24 ชุด
 function generate15Sets24GameNumbers() {
   const numberSets = {};
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 7; i++) {
     numberSets[`number${i}`] = generateRandom24GameNumbers();
   }
   return numberSets;
@@ -102,7 +102,7 @@ io.on("connection", (socket) => {
       isPlaying: false,
       playerinroom: 0,
       playerfininsed: 0,
-      timeLimit: 420,
+      timeLimit: 300,
     };
     socket.emit("roomCreated", sessionId);
   });
@@ -169,7 +169,7 @@ io.on("connection", (socket) => {
       playerData.score += scoreAdd;
 
       playerData.currentSetIndex++;
-      if (playerData.currentSetIndex > 10) {
+      if (playerData.currentSetIndex > 7) {
         socket.emit('finished', {playerName : playerName});
         roomdata[roomId].playerfininsed += 1;
         if (roomdata[roomId].playerfininsed === roomdata[roomId].playerinroom) {
